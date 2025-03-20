@@ -1,162 +1,164 @@
-import { ArrowUpDown, BarChart3, Wallet } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { PaymentModal } from '../components/PaymentModal';
-import { api } from '../lib/api';
-import { paymentService } from '../services/paymentService';
-import { useAuthStore } from '../store/authStore';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
-interface MarketRate {
-  base_currency: string;
-  quote_currency: string;
-  rate: number;
-  last_updated_at: string;
-}
-
-interface TradeOrder {
-  id: string;
-  order_type: 'buy' | 'sell';
-  base_currency: string;
-  quote_currency: string;
+interface Trade {
+  _id: string;
+  userId: string;
+  currencyPair: string;
+  type: 'buy' | 'sell';
   amount: number;
   price: number;
-  status: string;
-  created_at: string;
+  status: 'pending' | 'completed' | 'cancelled';
+  createdAt: string;
 }
 
-export function Dashboard() {
-  const { user } = useAuthStore();
-  const [marketRates, setMarketRates] = useState<MarketRate[]>([]);
-  const [orders, setOrders] = useState<TradeOrder[]>([]);
+const Dashboard = () => {
+  const { user } = useAuth();
+  const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
-  const [wallet, setWallet] = useState({
-    balance: 0,
-    currency: 'USD'
-  });
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadDashboardData() {
+    const fetchTrades = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        const [ratesData, ordersData] = await Promise.all([
-          api.getMarketRates(),
-          api.getTradeOrders()
-        ]);
-        setMarketRates(ratesData);
-        setOrders(ordersData);
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
+        const response = await fetch(`http://localhost:5000/api/trades/user/${user.uid}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch trades');
+        }
+        const data = await response.json();
+        setTrades(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred while fetching trades');
       } finally {
         setLoading(false);
       }
-    }
+    };
 
-    loadDashboardData();
-  }, []);
+    fetchTrades();
+  }, [user]);
 
-  const handleDeposit = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      await paymentService.createCheckoutSession(100); // Example: $100 deposit
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment failed');
-      console.error('Payment error:', err);
-    } finally {
-      setLoading(false);
+  const getStatusColor = (status: Trade['status']) => {
+    switch (status) {
+      case 'completed':
+        return 'text-green-600 bg-green-100';
+      case 'cancelled':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-yellow-600 bg-yellow-100';
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900">Please log in to view your trades</h2>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Welcome to FTS</h2>
-        <p className="text-gray-600">
-          Hello {user?.email}, welcome to your Foreign Trading System dashboard.
-        </p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="sm:flex sm:items-center">
+        <div className="sm:flex-auto">
+          <h1 className="text-2xl font-bold text-gray-900">Trade Dashboard</h1>
+          <p className="mt-2 text-sm text-gray-700">
+            A list of all your trades and their current status.
+          </p>
+        </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Market Overview</h3>
-            <BarChart3 className="h-6 w-6 text-blue-600" />
-          </div>
-          <div className="space-y-3">
-            {marketRates.slice(0, 3).map((rate) => (
-              <div key={`${rate.base_currency}-${rate.quote_currency}`} className="flex justify-between items-center">
-                <span className="text-gray-600">
-                  {rate.base_currency}/{rate.quote_currency}
-                </span>
-                <span className="font-medium">{rate.rate.toFixed(4)}</span>
-              </div>
-            ))}
-          </div>
+      {error && (
+        <div className="mt-4 p-4 bg-red-100 text-red-700 rounded">
+          {error}
         </div>
-        
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Recent Orders</h3>
-            <ArrowUpDown className="h-6 w-6 text-blue-600" />
-          </div>
-          <div className="space-y-3">
-            {orders.slice(0, 3).map((order) => (
-              <div key={order.id} className="flex justify-between items-center">
-                <div>
-                  <span className={`inline-block px-2 py-1 text-xs rounded ${
-                    order.order_type === 'buy' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {order.order_type.toUpperCase()}
+      )}
+
+      <div className="mt-8 flex flex-col">
+        <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+          <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+            <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+              <table className="min-w-full divide-y divide-gray-300">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+                      Currency Pair
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Type
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Amount
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Price
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Status
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {trades.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                        No trades found
+                      </td>
+                    </tr>
+                  ) : (
+                    trades.map((trade) => (
+                      <tr key={trade._id}>
+                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                          {trade.currencyPair}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          <span className={trade.type === 'buy' ? 'text-green-600' : 'text-red-600'}>
+                            {trade.type.toUpperCase()}
                   </span>
-                  <span className="ml-2 text-gray-600">
-                    {order.base_currency}/{order.quote_currency}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {trade.amount.toFixed(2)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {trade.price.toFixed(4)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(trade.status)}`}>
+                            {trade.status.charAt(0).toUpperCase() + trade.status.slice(1)}
                   </span>
-                </div>
-                <span className="font-medium">{order.amount}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Portfolio</h3>
-            <Wallet className="h-6 w-6 text-blue-600" />
-          </div>
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-semibold">Wallet Balance</h2>
-              <p className="text-3xl font-bold">${wallet.balance.toFixed(2)} {wallet.currency}</p>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {new Date(trade.createdAt).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-            <button
-              onClick={handleDeposit}
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-            >
-              {loading ? 'Processing...' : 'Deposit Funds'}
-            </button>
           </div>
-          {error && (
-            <div className="mt-4 text-red-600 text-sm">
-              {error}
-            </div>
-          )}
         </div>
       </div>
-
-      <PaymentModal
-        isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
-        onSuccess={handleDeposit}
-      />
     </div>
   );
-}
+};
+
+export default Dashboard;

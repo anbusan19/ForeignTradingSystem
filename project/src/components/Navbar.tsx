@@ -1,9 +1,10 @@
-import { Globe, Search, UserCircle } from 'lucide-react';
+import React from 'react';
+import { Globe, Search, UserCircle, PlusCircle } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
 export function Navbar() {
-  const { user, signOut } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const location = useLocation();
 
   // Don't show navigation on landing page when user is not authenticated
@@ -17,7 +18,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo and Brand */}
           <div className="flex items-center">
-            <Link to={user ? '/dashboard' : '/'} className="flex items-center space-x-2">
+            <Link to={'/'} className="flex items-center space-x-2">
               <Globe className="h-8 w-8 text-blue-600" />
               <span className="text-xl font-bold text-gray-900">FTS</span>
             </Link>
@@ -32,9 +33,21 @@ export function Navbar() {
               Contact
             </Link>
             {user && (
-              <Link to="/exchange-rates" className="text-gray-600 hover:text-gray-900">
-                Exchange Rates
-              </Link>
+              <>
+                <Link to="/exchange-rates" className="text-gray-600 hover:text-gray-900">
+                  Exchange Rates
+                </Link>
+                <Link to="/all-trades" className="text-gray-600 hover:text-gray-900">
+                  All Trades
+                </Link>
+                <Link 
+                  to="/create-trade" 
+                  className="flex items-center space-x-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <PlusCircle className="h-5 w-5" />
+                  <span>Create Trade</span>
+                </Link>
+              </>
             )}
           </div>
 
@@ -64,8 +77,11 @@ export function Navbar() {
                   <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                     Dashboard
                   </Link>
+                  <Link to="/create-trade" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 md:hidden">
+                    Create Trade
+                  </Link>
                   <button
-                    onClick={() => signOut()}
+                    onClick={() => logout()}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Sign Out
