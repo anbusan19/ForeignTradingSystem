@@ -7,53 +7,34 @@ export function Navbar() {
   const { user, logout } = useAuthStore();
   const location = useLocation();
 
-  // Don't show navigation on landing page when user is not authenticated
-  if (location.pathname === '/' && !user) {
-    return null;
-  }
-
   return (
     <nav className="bg-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo and Brand */}
-          <div className="flex items-center">
-            <Link to={'/'} className="flex items-center space-x-2">
+          {/* Left Section: Logo and Navigation */}
+          <div className="flex items-center space-x-8">
+            {/* Logo */}
+            <Link to={'/'} className="flex items-center space-x-2 flex-shrink-0">
               <Globe className="h-8 w-8 text-blue-600" />
               <span className="text-xl font-bold text-gray-900">FTS</span>
             </Link>
-          </div>
 
-          {/* Navigation Links */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link to="/about" className="text-gray-600 hover:text-gray-900">
-              About
-            </Link>
-            <Link to="/contact" className="text-gray-600 hover:text-gray-900">
-              Contact
-            </Link>
+            {/* Navigation Links */}
             {user && (
-              <>
+              <div className="hidden md:flex items-center space-x-6">
                 <Link to="/exchange-rates" className="text-gray-600 hover:text-gray-900">
                   Exchange Rates
                 </Link>
                 <Link to="/all-trades" className="text-gray-600 hover:text-gray-900">
                   All Trades
                 </Link>
-                <Link 
-                  to="/create-trade" 
-                  className="flex items-center space-x-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <PlusCircle className="h-5 w-5" />
-                  <span>Create Trade</span>
-                </Link>
-              </>
+              </div>
             )}
           </div>
 
-          {/* Search Bar */}
+          {/* Center Section: Search Bar */}
           {user && (
-            <div className="flex-1 max-w-md mx-8">
+            <div className="hidden md:block flex-1 max-w-md mx-8">
               <div className="relative">
                 <input
                   type="text"
@@ -65,15 +46,24 @@ export function Navbar() {
             </div>
           )}
 
-          {/* Auth Buttons or User Menu */}
+          {/* Right Section: Create Trade Button and User Menu */}
           <div className="flex items-center space-x-4">
+            {user && (
+              <Link 
+                to="/create-trade" 
+                className="hidden md:flex items-center space-x-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <PlusCircle className="h-5 w-5" />
+                <span>Create Trade</span>
+              </Link>
+            )}
+            
             {user ? (
               <div className="relative group">
-                <button className="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
-                  <UserCircle className="h-8 w-8" />
-                  <span>{user.email}</span>
+                <button className="p-1 rounded-full hover:bg-gray-100">
+                  <UserCircle className="h-8 w-8 text-gray-700" />
                 </button>
-                <div className="absolute right-0 w-48 mt-2 py-2 bg-white rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                <div className="absolute right-0 w-48 mt-2 py-2 bg-white rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                   <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                     Dashboard
                   </Link>
