@@ -1,19 +1,43 @@
-import React, { useEffect } from 'react';
-import { useWalletStore } from '../store/walletStore';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+
+interface WalletData {
+  balance: number;
+  currency: string;
+  updatedAt: string;
+}
 
 export function Wallet() {
-  const { balances, isLoading, error, fetchBalances } = useWalletStore();
+  const { user } = useAuth();
+  const [wallet, setWallet] = useState<WalletData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchWallet = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/wallet/${user?.uid}`);
+      if (!response.ok) throw new Error('Failed to fetch wallet data');
+      const data = await response.json();
+      setWallet(data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load wallet data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchBalances();
-  }, [fetchBalances]);
+    if (user) {
+      fetchWallet();
+    }
+  }, [user]);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="animate-pulse p-4 bg-white rounded-lg shadow">
         <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
         <div className="space-y-3">
-          <div className="h-8 bg-gray-200 rounded"></div>
           <div className="h-8 bg-gray-200 rounded"></div>
         </div>
       </div>
@@ -33,30 +57,22 @@ export function Wallet() {
       <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Wallet</h2>
       
       <div className="space-y-4">
-        {balances.map((balance) => (
-          <div
-            key={balance.currency}
-            className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-          >
-            <div>
-              <p className="text-sm font-medium text-gray-500">
-                {balance.currency}
-              </p>
-              <p className="text-lg font-semibold text-gray-900">
-                {balance.amount.toFixed(2)}
-              </p>
-            </div>
-            <div className={`text-sm font-medium ${balance.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {balance.amount >= 0 ? 'Available' : 'Overdrawn'}
-            </div>
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div>
+            <p className="text-sm font-medium text-gray-500">
+              {wallet?.currency}
+            </p>
+            <p className="text-lg font-semibold text-gray-900">
+              {wallet?.balance.toFixed(2)}
+            </p>
           </div>
-        ))}
-
-        {balances.length === 0 && (
-          <p className="text-gray-500 text-center py-4">
-            No balances available
-          </p>
-        )}
+          <div className={`text-sm font-medium ${(wallet?.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {(wallet?.balance || 0) >= 0 ? 'Available' : 'Overdrawn'}
+          </div>
+        </div>
+        <div className="text-sm text-gray-500 text-right">
+          Last updated: {new Date(wallet?.updatedAt || '').toLocaleString()}
+        </div>
       </div>
     </div>
   );
