@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Trade = require('../models/Trade');
+const Wallet = require('../models/Wallet');
 
 // Create a new trade
 router.post('/', async (req, res) => {
@@ -26,7 +27,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get trades by user ID
+// Get user trades
 router.get('/user/:userId', async (req, res) => {
   try {
     const trades = await Trade.find({ userId: req.params.userId }).sort({ createdAt: -1 });
@@ -36,20 +37,52 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
-// Update trade status
-router.patch('/:id', async (req, res) => {
+// Execute a trade
+router.post('/execute/:tradeId', async (req, res) => {
   try {
-    const trade = await Trade.findByIdAndUpdate(
-      req.params.id,
-      { status: req.body.status },
-      { new: true }
-    );
+    const { tradeId } = req.params;
+    const { userId } = req.body;
+
+    const trade = await Trade.findById(tradeId);
     if (!trade) {
       return res.status(404).json({ message: 'Trade not found' });
     }
-    res.json(trade);
+
+    if (trade.status !== 'pending') {
+      return res.status(400).json({ message: 'Trade is no longer pending' });
+    }
+
+    const wallet = await Wallet.findOne({ userId });
+    if (!wallet) {
+      return res.status(404).json({ message: 'Wallet not found' });
+    }
+
+    const totalCost = trade.amount * trade.price;
+
+    // Check if user has sufficient balance and update wallet
+    if (trade.type === 'buy') {
+      if (wallet.balance < totalCost) {
+        return res.status(400).json({ message: 'Insufficient funds' });
+      }
+      wallet.balance -= totalCost;
+    } else {
+      if (wallet.balance < trade.amount) {
+        return res.status(400).json({ message: 'Insufficient currency amount' });
+      }
+      wallet.balance += totalCost;
+    }
+
+    // Update wallet and trade status
+    wallet.updatedAt = new Date();
+    await wallet.save();
+
+    trade.status = 'completed';
+    await trade.save();
+
+    res.json({ trade, wallet });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Error executing trade:', error);
+    res.status(500).json({ message: error.message });
   }
 });
 

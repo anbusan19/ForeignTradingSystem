@@ -4,6 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const tradeRoutes = require('./routes/tradeRoutes');
 const exchangeRatesRoutes = require('./routes/exchangeRatesRoutes');
+const walletRoutes = require('./routes/walletRoutes');
 
 dotenv.config();
 const app = express();
@@ -20,6 +21,7 @@ mongoose.connect(process.env.MONGODB_URI)
 // Routes
 app.use('/api/trades', tradeRoutes);
 app.use('/api/exchange-rates', exchangeRatesRoutes);
+app.use('/api/wallet', walletRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
